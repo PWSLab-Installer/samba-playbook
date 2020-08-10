@@ -1,0 +1,42 @@
+- hosts: localhost
+  connection: local
+
+  vars:
+    
+  tasks:
+
+    -   name: Check the version of Release
+        command: hostnamectl
+        register: os_check
+        ignore_errors: yes
+      
+    -   name: Install Role Samba
+        local_action: command ansible-galaxy install -f geerlingguy.samba 
+
+    -   name: Applying role Samba
+        command: mv ~/.ansible/roles/geerlingguy.samba ~/.ansible/roles/pwslab.samba
+        ignore_errors: yes
+
+    -   name: Installing Samba
+        include_role:
+            name: pwslab.samba
+        when: 
+            - not os_check.stdout | regex_search("Ubuntu 20")
+
+    -   name: Ensure Samba-related packages are installed (Debian).
+        apt: 
+            name: "{{ item }}" 
+            state: present
+        loop:
+            - samba
+            - samba-common
+        when: 
+            - os_check.stdout | regex_search("Ubuntu 20")
+
+    -   name: Ensure Samba is running and set to start on boot.
+        service: 
+            name: smbd 
+            state: started 
+            enabled: yes
+        when: 
+            - os_check.stdout | regex_search("Ubuntu 20")
